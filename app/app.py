@@ -7,6 +7,29 @@ from app.database.db import init_db
 from app.services.azure.azureblob.azureblob import AzureBlobService
 
 
+def insert_to_db(files_uploaded, cursor):
+    cursor.executemany(
+        "INSERT INTO file_logs (file_name) VALUES (%s)", # ?
+        [(file,) for file in files_uploaded],
+    )
+
+def get_file_log_by_filename(filename, cursor):
+    cursor.execute("SELECT * FROM file_logs WHERE file_name = %s", (filename,)) # ?
+    data = cursor.fetchall()
+    return data
+
+def load_to_db(files_uploaded):
+    # get db object
+    conn, cursor = init_db()
+
+    insert_to_db(files_uploaded=files_uploaded, cursor=cursor)
+
+    # commit
+    conn.commit()
+
+    conn.close()
+
+
 def execute_logic():
     # set source folder directory
     directory = ProjectSettings.SOURCE_DIRECTORY_PATH
@@ -25,9 +48,6 @@ def execute_logic():
         container_name=ProjectSettings.AZURE_STORAGE_CONTAINER_NAME,
     )
 
-    # get db object
-    conn, cursor = init_db()
-
     files_uploaded = []
     files_upload_status = []
 
@@ -40,11 +60,7 @@ def execute_logic():
         except Exception as e:
             files_upload_status.append(False)
 
-    cursor.executemany(
-        "INSERT INTO file_logs (file_name) VALUES (%s)", [(file,) for file in files_uploaded]
-    )
-
-    # commit
-    conn.commit()
-
-    conn.close()
+    print("Updating DB..")
+    load_to_db(files_uploaded)
+    print("Pass")
+    return "pass"
